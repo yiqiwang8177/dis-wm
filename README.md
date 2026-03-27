@@ -42,7 +42,7 @@ conda create -n swm python=3.10
 conda activate swm
 pip install stable-worldmodel[train,env]
 ```
-It seems table-worldmodel library relies on latest version of pytorch, which relies on cuda13. Thus, you may want to upgrade to cuda13 first, create conda env, etc.
+It seems stable-worldmodel library relies on latest version of pytorch, which relies on cuda13. Thus, you may want to upgrade to cuda13 first, create conda env, etc.
 
 
 ## Data
