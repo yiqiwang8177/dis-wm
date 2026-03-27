@@ -36,6 +36,15 @@ source .venv/bin/activate
 uv pip install stable-worldmodel[train,env]
 ```
 
+Conda equivalent
+```bash
+conda create -n swm python=3.10
+conda activate swm
+pip install stable-worldmodel[train,env]
+```
+It seems table-worldmodel library relies on latest version of pytorch, which relies on cuda13. Thus, you may want to upgrade to cuda13 first, create conda env, etc.
+
+
 ## Data
 
 Datasets use the HDF5 format for fast loading. Download the data from the [Drive](https://drive.google.com/drive/folders/1r31os0d4-rR0mdHc7OlY_e5nh3XT4r4e?usp=sharing) and decompress with:
