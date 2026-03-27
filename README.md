@@ -46,7 +46,7 @@ It seems table-worldmodel library relies on latest version of pytorch, which rel
 
 
 ## Data
-
+Note: for debugging purpose, two-room is the smallest.<br>
 Datasets use the HDF5 format for fast loading. Download the data from the [Drive](https://drive.google.com/drive/folders/1r31os0d4-rR0mdHc7OlY_e5nh3XT4r4e?usp=sharing) and decompress with:
 
 ```bash
