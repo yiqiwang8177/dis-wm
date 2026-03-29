@@ -1,56 +1,45 @@
-defaults:
-  - _self_
-  - data: pusht
-
 output_model_name: lewm
 subdir: ${hydra:job.id}
-
 num_workers: 6
 train_split: 0.9
 seed: 3072
 img_size: 224
 patch_size: 14
 encoder_scale: tiny
-dump_object: True
-dino_features: False
-
+dump_object: true
+dino_features: true
 trainer:
   max_epochs: 100
   devices: auto
   accelerator: gpu
   precision: bf16
   gradient_clip_val: 1.0
-  accumulate_grad_batches: 2 #  default is 1
+  accumulate_grad_batches: 2
   default_root_dir: ./../diswm_outputs/${output_model_name}
-
 loader:
-  batch_size: 64
+  batch_size: 128
   num_workers: ${num_workers}
-  persistent_workers: False # True
-  prefetch_factor: 1 # 3
-  pin_memory: False # True
-
+  persistent_workers: false
+  prefetch_factor: 1
+  pin_memory: false
 optimizer:
   type: AdamW
-  lr: 5e-5
-  weight_decay: 1e-3
-
+  lr: 5.0e-05
+  weight_decay: 0.001
 wandb:
-  enabled: True
+  enabled: false
   config:
     entity: lewm
     project: lewm
     name: ${output_model_name}
     id: ${subdir}
     resume: allow
-    log_model: False
-
+    log_model: false
 wm:
   type: lewm
   history_size: 3
   num_preds: 1
   embed_dim: 192
-
 predictor:
   depth: 6
   heads: 16
@@ -58,10 +47,21 @@ predictor:
   dim_head: 64
   dropout: 0.1
   emb_dropout: 0.0
-
 loss:
   sigreg:
     weight: 0.09
     kwargs:
       knots: 17
       num_proj: 1024
+data:
+  dataset:
+    num_steps: ${eval:'${wm.num_preds} + ${wm.history_size}'}
+    frameskip: 5
+    name: tworoom
+    keys_to_load:
+    - pixels
+    - action
+    - proprio
+    keys_to_cache:
+    - action
+    - proprio

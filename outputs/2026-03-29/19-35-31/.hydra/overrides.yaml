@@ -1,0 +1,3 @@
+- data=tworoom
+- dino_features=True
+- wandb.enabled=False

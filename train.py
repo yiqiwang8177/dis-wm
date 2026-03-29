@@ -1,6 +1,7 @@
 import os
 from functools import partial
 from pathlib import Path
+from xml.parsers.expat import model
 
 import hydra
 import lightning as pl
@@ -13,7 +14,7 @@ from omegaconf import OmegaConf, open_dict
 from jepa import JEPA
 from module import ARPredictor, Embedder, MLP, SIGReg
 from utils import get_column_normalizer, get_img_preprocessor, ModelObjectCallBack
-
+import timm
 
 def lejepa_forward(self, batch, stage, cfg):
     """encode observations, predict next states, compute losses."""
@@ -51,21 +52,26 @@ def run(cfg):
     ##       dataset       ##
     #########################
 
+
+    
     dataset = swm.data.HDF5Dataset(**cfg.data.dataset, transform=None)
-    transforms = [get_img_preprocessor(source='pixels', target='pixels', img_size=cfg.img_size)]
+   
+    # What I did here only match dino resize but interpolation is different, check timm doc for details
+    transforms = [get_img_preprocessor(source='pixels', target='pixels', img_size=cfg.img_size)] if not cfg.dino_features else [get_img_preprocessor(source='pixels', target='pixels', img_size=256)]
     
     with open_dict(cfg):
         for col in cfg.data.dataset.keys_to_load:
-            if col.startswith("pixels"):
+            if col.startswith("pixels") or 'feature' in col:
                 continue
 
             normalizer = get_column_normalizer(dataset, col, col)
             transforms.append(normalizer)
 
             setattr(cfg.wm, f"{col}_dim", dataset.get_dim(col))
-
+    
     transform = spt.data.transforms.Compose(*transforms)
     dataset.transform = transform
+   
 
     rnd_gen = torch.Generator().manual_seed(cfg.seed)
     train_set, val_set = spt.data.random_split(
@@ -78,16 +84,23 @@ def run(cfg):
     ##############################
     ##       model / optim      ##
     ##############################
+    if not cfg.dino_features:
+        encoder = spt.backbone.utils.vit_hf(
+            cfg.encoder_scale,
+            patch_size=cfg.patch_size,
+            image_size=cfg.img_size,
+            pretrained=False,
+            use_mask_token=False,
+        ) 
+    else:
+        
+        encoder =  timm.create_model('vit_small_patch16_dinov3.lvd1689m', pretrained=True, num_classes=0,)
+        encoder.eval()
+        # set requires_grad to False for all parameters in the encoder
+        for param in encoder.parameters():
+            param.requires_grad = False
 
-    encoder = spt.backbone.utils.vit_hf(
-        cfg.encoder_scale,
-        patch_size=cfg.patch_size,
-        image_size=cfg.img_size,
-        pretrained=False,
-        use_mask_token=False,
-    )
-
-    hidden_dim = encoder.config.hidden_size
+    hidden_dim = encoder.config.hidden_size if not cfg.dino_features else 384
     embed_dim = cfg.wm.get("embed_dim", hidden_dim)
     effective_act_dim = cfg.data.dataset.frameskip * cfg.wm.action_dim
 
@@ -121,6 +134,7 @@ def run(cfg):
         action_encoder=action_encoder,
         projector=projector,
         pred_proj=predictor_proj,
+        use_dino=cfg.dino_features,
     )
 
     optimizers = {

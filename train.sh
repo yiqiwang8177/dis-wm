@@ -1,3 +1,4 @@
 python train.py \
-    data=dmc \
+    data=tworoom \
+    dino_features=True \
     wandb.enabled=False

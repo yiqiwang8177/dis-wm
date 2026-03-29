@@ -17,10 +17,12 @@ class JEPA(nn.Module):
         action_encoder,
         projector=None,
         pred_proj=None,
+        use_dino=False,
     ):
         super().__init__()
 
         self.encoder = encoder
+        self.use_dino = use_dino
         self.predictor = predictor
         self.action_encoder = action_encoder
         self.projector = projector or nn.Identity()
@@ -30,12 +32,20 @@ class JEPA(nn.Module):
         """Encode observations and actions into embeddings.
         info: dict with pixels and action keys
         """
-
-        pixels = info['pixels'].float()
-        b = pixels.size(0)
-        pixels = rearrange(pixels, "b t ... -> (b t) ...") # flatten for encoding
-        output = self.encoder(pixels, interpolate_pos_encoding=True)
-        pixels_emb = output.last_hidden_state[:, 0]  # cls token
+       
+        if not self.use_dino:
+            pixels = info['pixels'].float()
+            b = pixels.size(0)
+            pixels = rearrange(pixels, "b t ... -> (b t) ...") # flatten for encoding
+            output = self.encoder(pixels, interpolate_pos_encoding=True)
+            pixels_emb = output.last_hidden_state[:, 0]  # cls token
+        else:
+            # use dino feature 
+            pixels = info['pixels'].float()
+            b = pixels.size(0)
+            with torch.no_grad():
+                feats = self.encoder.forward_features(rearrange(pixels, "b t ... -> (b t) ..."))
+                pixels_emb = feats[:, 0]  
         emb = self.projector(pixels_emb)
         info["emb"] = rearrange(emb, "(b t) d -> b t d", b=b)
 
