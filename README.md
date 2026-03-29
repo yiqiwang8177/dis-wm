@@ -42,7 +42,7 @@ conda create -n swm python=3.10
 conda activate swm
 pip install stable-worldmodel[train,env]
 ```
-It seems table-worldmodel library relies on latest version of pytorch, which relies on cuda13. Thus, you may want to upgrade to cuda13 first, create conda env, etc.
+It seems stable-worldmodel library relies on latest version of pytorch, which relies on cuda13. Thus, you may want to upgrade to cuda13 first, create conda env, etc.
 
 
 ## Data
@@ -58,7 +58,8 @@ Place the extracted `.h5` files under `$STABLEWM_HOME` (defaults to `~/.stable-w
 export STABLEWM_HOME=/path/to/your/storage
 ```
 
-Dataset names are specified without the `.h5` extension. For example, `config/train/data/pusht.yaml` references `pusht_expert_train`, which resolves to `$STABLEWM_HOME/pusht_expert_train.h5`.
+Dataset names are specified without the `.h5` extension. For example, `config/train/data/pusht.yaml` references `pusht_expert_train`, which resolves to `$STABLEWM_HOME/pusht_expert_train.h5`.<br>
+The **tworoom** dataset is one of the smallest dataset to get start with.
 
 ## Training
 
