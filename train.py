@@ -12,11 +12,11 @@ from lightning.pytorch.loggers import WandbLogger
 from omegaconf import OmegaConf, open_dict
 
 from jepa import JEPA
-from module import ARPredictor, Embedder, MLP, SIGReg
+from module import ARPredictor, Embedder, MLP, SIGReg, StateExtractor
 from utils import get_column_normalizer, get_img_preprocessor, ModelObjectCallBack
 import timm
 
-def lejepa_forward(self, batch, stage, cfg):
+def lejepa_forward(self, batch, stage, cfg, static_weights=None):
     """encode observations, predict next states, compute losses."""
 
     ctx_len = cfg.wm.history_size
@@ -29,19 +29,31 @@ def lejepa_forward(self, batch, stage, cfg):
     output = self.model.encode(batch)
 
     emb = output["emb"]  # (B, T, D)
+    emb_static = output["emb_static"] if "emb_static" in output else None 
     act_emb = output["act_emb"]
 
     ctx_emb = emb[:, :ctx_len]
     ctx_act = act_emb[:, : ctx_len]
-
+    # Teacher-forcing loss
     tgt_emb = emb[:, n_preds:] # label
-    pred_emb = self.model.predict(ctx_emb, ctx_act) # pred
+    pred_emb = self.model.predict(ctx_emb, ctx_act, static_emb=emb_static[:, n_preds:]) # pred
 
     # LeWM loss
     output["pred_loss"] = (pred_emb - tgt_emb).pow(2).mean()
     output["sigreg_loss"]= self.sigreg(emb.transpose(0, 1))
     output["loss"] = output["pred_loss"] + lambd * output["sigreg_loss"]  
-
+    if "emb_static" in output:
+        assert static_weights is not None, "static_weights must be provided for DisWM"
+        output["sigreg_loss_static"]= self.sigreg(emb_static.transpose(0, 1))
+        output["loss"] += lambd * output["sigreg_loss_static"]
+        # static loss: pairwise loss 
+        diff = emb_static.unsqueeze(2) - emb_static.unsqueeze(1) 
+        pairwise_loss = diff.pow(2).mean(dim=-1) * static_weights.to(diff.device).unsqueeze(0)
+        output["static_loss"] = pairwise_loss.mean()
+        output["loss"] += output["static_loss"]
+        static_emb_std = emb_static.std(dim=1).mean()
+        output["static_emb_std"] = static_emb_std
+        
     losses_dict = {f"{stage}/{k}": v.detach() for k, v in output.items() if "loss" in k}
     self.log_dict(losses_dict, on_step=True, sync_dist=True)
     return output
@@ -52,8 +64,6 @@ def run(cfg):
     ##       dataset       ##
     #########################
 
-
-    
     dataset = swm.data.HDF5Dataset(**cfg.data.dataset, transform=None)
    
     # What I did here only match dino resize but interpolation is different, check timm doc for details
@@ -84,6 +94,7 @@ def run(cfg):
     ##############################
     ##       model / optim      ##
     ##############################
+    
     if not cfg.dino_features:
         encoder = spt.backbone.utils.vit_hf(
             cfg.encoder_scale,
@@ -93,13 +104,40 @@ def run(cfg):
             use_mask_token=False,
         ) 
     else:
-        
         encoder =  timm.create_model('vit_small_patch16_dinov3.lvd1689m', pretrained=True, num_classes=0,)
         encoder.eval()
         # set requires_grad to False for all parameters in the encoder
         for param in encoder.parameters():
             param.requires_grad = False
 
+    diswm = cfg.get("diswm", False)
+    state_extractor, state_encoding, static_weights = None, None, None
+    if diswm:
+        print("Using DisWM architecture with 2 branches.")
+        state_extractor = StateExtractor(
+            embed_dim=384 if cfg.dino_features else encoder.config.hidden_size,
+            num_queries=2,
+            hidden_dim=256,
+            num_heads=1,
+            num_layers=1,
+        )
+        state_encoding = MLP(
+            input_dim=384 if cfg.dino_features else encoder.config.hidden_size,
+            output_dim=cfg.wm.get("embed_dim", 384),
+            hidden_dim=512,
+            norm_fn=torch.nn.BatchNorm1d,
+        )
+        T = cfg.wm.history_size + 1 
+        i = torch.arange(T).unsqueeze(1)  # shape (T, 1)
+        j = torch.arange(T).unsqueeze(0)  # shape (1, T)
+        diff = j - i
+        """
+        0, 1, 1/2,  1/3,        ...
+        0, 0, 1,    1/2, 1/3,   ...
+        0, 0, 0,    1,   1/2,   ...
+        """
+        static_weights = torch.where(diff > 0, 1.0 / diff, torch.zeros_like(diff, dtype=torch.float))
+      
     hidden_dim = encoder.config.hidden_size if not cfg.dino_features else 384
     embed_dim = cfg.wm.get("embed_dim", hidden_dim)
     effective_act_dim = cfg.data.dataset.frameskip * cfg.wm.action_dim
@@ -122,7 +160,7 @@ def run(cfg):
     )
 
     predictor_proj = MLP(
-        input_dim=hidden_dim,
+        input_dim=hidden_dim if not cfg.diswm else hidden_dim + embed_dim,
         output_dim=embed_dim,
         hidden_dim=2048,
         norm_fn=torch.nn.BatchNorm1d,
@@ -135,8 +173,11 @@ def run(cfg):
         projector=projector,
         pred_proj=predictor_proj,
         use_dino=cfg.dino_features,
+        diswm=cfg.diswm,
+        state_extractor=state_extractor,
+        state_encoding=state_encoding,
     )
-
+  
     optimizers = {
         'model_opt': {
             "modules": 'model',
@@ -150,7 +191,7 @@ def run(cfg):
     world_model = spt.Module(
         model = world_model,
         sigreg = SIGReg(**cfg.loss.sigreg.kwargs),
-        forward=partial(lejepa_forward, cfg=cfg),
+        forward=partial(lejepa_forward, cfg=cfg, static_weights=static_weights),
         optim=optimizers,
     )
 

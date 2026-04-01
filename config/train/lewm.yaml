@@ -13,6 +13,7 @@ patch_size: 14
 encoder_scale: tiny
 dump_object: True
 dino_features: False
+diswm: False
 
 trainer:
   max_epochs: 100
