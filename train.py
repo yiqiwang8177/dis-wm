@@ -29,14 +29,14 @@ def lejepa_forward(self, batch, stage, cfg, static_weights=None):
     output = self.model.encode(batch)
 
     emb = output["emb"]  # (B, T, D)
-    emb_static = output["emb_static"][:, n_preds:] if "emb_static" in output else None 
+    emb_static = output["emb_static"] if "emb_static" in output else None 
     act_emb = output["act_emb"]
 
     ctx_emb = emb[:, :ctx_len]
     ctx_act = act_emb[:, : ctx_len]
     # Teacher-forcing loss
     tgt_emb = emb[:, n_preds:] # label
-    pred_emb = self.model.predict(ctx_emb, ctx_act, static_emb=emb_static) # pred
+    pred_emb = self.model.predict(ctx_emb, ctx_act, static_emb=emb_static[:, n_preds:] if emb_static is not None else None) # pred
 
     # LeWM loss
     output["pred_loss"] = (pred_emb - tgt_emb).pow(2).mean()
