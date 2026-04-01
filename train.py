@@ -55,6 +55,8 @@ def lejepa_forward(self, batch, stage, cfg, static_weights=None):
         output["static_emb_std"] = static_emb_std
         
     losses_dict = {f"{stage}/{k}": v.detach() for k, v in output.items() if "loss" in k}
+    if "static_emb_std" in output:
+        losses_dict[f"{stage}/static_emb_std"] = output["static_emb_std"].detach()
     self.log_dict(losses_dict, on_step=True, sync_dist=True)
     return output
 
