@@ -1,0 +1,179 @@
+_wandb:
+    value:
+        cli_version: 0.25.1
+        e:
+            ab2nkzw148fo95dlylfmyi9f42sssj21:
+                args:
+                    - data=tworoom
+                    - dino_features=True
+                    - wandb.enabled=True
+                    - diswm=True
+                    - output_model_name=lewm_dino_diswm
+                codePath: train.py
+                codePathLocal: train.py
+                cpu_count: 4
+                cpu_count_logical: 8
+                cudaVersion: "13.0"
+                disk:
+                    /:
+                        total: "102057607168"
+                        used: "53397618688"
+                email: yiqiw2@andrew.cmu.edu
+                executable: /home/atkeonlab-3/miniconda3/envs/swm/bin/python
+                git:
+                    commit: ea97d67da082ede70a5c038585c193bdd1b23891
+                    remote: https://github.com/yiqiwang8177/dis-wm.git
+                gpu: NVIDIA GeForce RTX 3090
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ampere
+                      cudaCores: 10496
+                      memoryTotal: "25769803776"
+                      name: NVIDIA GeForce RTX 3090
+                      uuid: GPU-61052d35-d340-6921-c2b5-b2c5d63f3580
+                host: atkeonlab3
+                memory:
+                    total: "33593090048"
+                os: Linux-6.8.0-106-generic-x86_64-with-glibc2.35
+                program: /home/atkeonlab-3/Desktop/YiqiProject/dis-wm/train.py
+                python: CPython 3.10.20
+                root: .
+                startedAt: "2026-04-01T18:52:51.917552Z"
+                writerId: ab2nkzw148fo95dlylfmyi9f42sssj21
+        m:
+            - "1": trainer/global_step
+              "6":
+                - 3
+              "7": []
+            - "2": '*'
+              "5": 1
+              "6":
+                - 1
+              "7": []
+        python_version: 3.10.20
+        t:
+            "1":
+                - 1
+                - 5
+                - 11
+                - 41
+                - 49
+                - 50
+                - 51
+                - 53
+                - 63
+                - 106
+            "2":
+                - 1
+                - 5
+                - 11
+                - 41
+                - 49
+                - 50
+                - 51
+                - 53
+                - 63
+                - 106
+            "3":
+                - 7
+                - 13
+                - 66
+            "4": 3.10.20
+            "5": 0.25.1
+            "6": 5.4.0
+            "12": 0.25.1
+            "13": linux-x86_64
+data:
+    value:
+        dataset:
+            frameskip: 5
+            keys_to_cache:
+                - action
+                - proprio
+            keys_to_load:
+                - pixels
+                - action
+                - proprio
+            name: tworoom
+            num_steps: ${eval:'${wm.num_preds} + ${wm.history_size}'}
+dino_features:
+    value: true
+diswm:
+    value: true
+dump_object:
+    value: true
+encoder_scale:
+    value: tiny
+img_size:
+    value: 224
+loader:
+    value:
+        batch_size: 64
+        num_workers: ${num_workers}
+        persistent_workers: false
+        pin_memory: false
+        prefetch_factor: 1
+loss:
+    value:
+        sigreg:
+            kwargs:
+                knots: 17
+                num_proj: 1024
+            weight: 0.09
+num_workers:
+    value: 6
+optimizer:
+    value:
+        lr: 5e-05
+        type: AdamW
+        weight_decay: 0.001
+output_model_name:
+    value: lewm_dino_diswm
+patch_size:
+    value: 14
+predictor:
+    value:
+        depth: 6
+        dim_head: 64
+        dropout: 0.1
+        emb_dropout: 0
+        heads: 16
+        mlp_dim: 2048
+seed:
+    value: 3072
+slurm.job_id:
+    value: N/A
+slurm.task_id:
+    value: N/A
+subdir:
+    value: ${hydra:job.id}
+system.working_dir:
+    value: /home/atkeonlab-3/Desktop/YiqiProject/dis-wm
+train_split:
+    value: 0.9
+trainer:
+    value:
+        accelerator: gpu
+        accumulate_grad_batches: 2
+        default_root_dir: ./../diswm_outputs/${output_model_name}
+        devices: auto
+        gradient_clip_val: 1
+        max_epochs: 100
+        precision: bf16
+wandb:
+    value:
+        config:
+            id: ${subdir}
+            log_model: false
+            name: ${output_model_name}
+            project: lewm
+            resume: allow
+        enabled: true
+wm:
+    value:
+        action_dim: 2
+        embed_dim: 192
+        history_size: 3
+        num_preds: 1
+        proprio_dim: 2
+        type: lewm
