@@ -12,6 +12,8 @@ img_size: 224
 patch_size: 14
 encoder_scale: tiny
 dump_object: True
+dino_features: False
+diswm: False
 
 trainer:
   max_epochs: 100
@@ -19,13 +21,14 @@ trainer:
   accelerator: gpu
   precision: bf16
   gradient_clip_val: 1.0
-  default_root_dir: './'
+  accumulate_grad_batches: 1 #  default is 1
+  default_root_dir: ./../diswm_outputs/${output_model_name}
 
 loader:
   batch_size: 128
   num_workers: ${num_workers}
-  persistent_workers: True
-  prefetch_factor: 1
+  persistent_workers:  True
+  prefetch_factor: 3
   pin_memory: True
 
 optimizer:
@@ -36,7 +39,6 @@ optimizer:
 wandb:
   enabled: True
   config:
-    entity: lewm
     project: lewm
     name: ${output_model_name}
     id: ${subdir}

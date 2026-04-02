@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn.functional as F
-from einops import rearrange
+from einops import rearrange, repeat
 from torch import nn
 
 def detach_clone(v):
@@ -17,26 +17,51 @@ class JEPA(nn.Module):
         action_encoder,
         projector=None,
         pred_proj=None,
+        use_dino=False,
+        diswm=False,
+        state_extractor=None,
+        state_encoding=None,
     ):
         super().__init__()
 
         self.encoder = encoder
+        self.use_dino = use_dino
+        self.diswm = diswm # 2 branches
         self.predictor = predictor
         self.action_encoder = action_encoder
+        self.state_encoding = state_encoding
         self.projector = projector or nn.Identity()
         self.pred_proj = pred_proj or nn.Identity()
+        self.state_extractor = state_extractor
 
     def encode(self, info):
         """Encode observations and actions into embeddings.
         info: dict with pixels and action keys
         """
-
-        pixels = info['pixels'].float()
-        b = pixels.size(0)
-        pixels = rearrange(pixels, "b t ... -> (b t) ...") # flatten for encoding
-        output = self.encoder(pixels, interpolate_pos_encoding=True)
-        pixels_emb = output.last_hidden_state[:, 0]  # cls token
-        emb = self.projector(pixels_emb)
+       
+        if not self.use_dino:
+            pixels = info['pixels'].float()
+            b = pixels.size(0)
+            pixels = rearrange(pixels, "b t ... -> (b t) ...") # flatten for encoding
+            output = self.encoder(pixels, interpolate_pos_encoding=True)
+            pixels_emb = output.last_hidden_state[:, 0]  # cls token
+        else:
+            # use dino feature 
+            pixels = info['pixels'].float()
+            b = pixels.size(0)
+            with torch.no_grad():
+                feats = self.encoder.forward_features(rearrange(pixels, "b t ... -> (b t) ..."))
+            if not self.diswm:
+                pixels_emb = feats[:, 0]  
+            else:
+                pixels_emb = self.state_extractor(feats[:, 5:])   # get rid of cls token and 4  registers 
+                
+        if not self.diswm:
+            emb = self.projector(pixels_emb)
+        else:
+            emb = self.projector(pixels_emb[:, 0])  # dynamic branch
+            emb_static = self.state_encoding(pixels_emb[:, 1])  # static branch
+            info["emb_static"] = rearrange(emb_static, "(b t) d -> b t d", b=b)
         info["emb"] = rearrange(emb, "(b t) d -> b t d", b=b)
 
         if "action" in info:
@@ -44,12 +69,16 @@ class JEPA(nn.Module):
 
         return info
 
-    def predict(self, emb, act_emb):
+    def predict(self, emb, act_emb, static_emb=None):
         """Predict next state embedding
         emb: (B, T, D)
         act_emb: (B, T, A_emb)
+        static_emb: (B, T, D_static) or None
         """
         preds = self.predictor(emb, act_emb)
+        if self.diswm:
+          
+            preds = torch.cat([preds, static_emb], dim=-1)
         preds = self.pred_proj(rearrange(preds, "b t d -> (b t) d"))
         preds = rearrange(preds, "(b t) d -> b t d", b=emb.size(0))
         return preds

@@ -283,3 +283,31 @@ class ARPredictor(nn.Module):
         x = self.dropout(x)
         x = self.transformer(x, c)
         return x
+
+class StateExtractor(nn.Module):
+    """Extract state representation from dino embeddings using cross-attention, with learnable queries"""
+
+    def __init__(self, embed_dim=384, num_queries=2, hidden_dim=512, num_heads=1, num_layers=1):
+        super().__init__()
+        self.queries = nn.Parameter(torch.randn(num_queries, embed_dim))
+        layers = []
+        for _ in range(num_layers):
+            layers.append(
+                nn.TransformerDecoderLayer(
+                    d_model=embed_dim,
+                    nhead=num_heads,
+                    dim_feedforward=hidden_dim,
+                    batch_first=True
+                )
+            )
+        self.layers = nn.ModuleList(layers)
+
+    def forward(self, x):
+        """
+        x: (B, T, embed_dim)
+        """
+        b = x.size(0)
+        queries = self.queries.unsqueeze(0).expand(b, -1, -1)  # (B, num_queries, embed_dim)
+        for layer in self.layers:
+            queries = layer(tgt=queries, memory=x)
+        return queries  # (B, num_queries, embed_dim)
