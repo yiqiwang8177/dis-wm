@@ -13,18 +13,19 @@ trainer:
   accelerator: gpu
   precision: bf16
   gradient_clip_val: 1.0
+  default_root_dir: /zfsauton/scratch/yiqiw2/logs
 loader:
   batch_size: 128
   num_workers: ${num_workers}
   persistent_workers: true
-  prefetch_factor: 3
+  prefetch_factor: 1
   pin_memory: true
 optimizer:
   type: AdamW
   lr: 5.0e-05
   weight_decay: 0.001
 wandb:
-  enabled: true
+  enabled: false
   config:
     entity: lewm
     project: lewm
@@ -54,11 +55,11 @@ data:
   dataset:
     num_steps: ${eval:'${wm.num_preds} + ${wm.history_size}'}
     frameskip: 5
-    name: reacher
+    name: tworoom
     keys_to_load:
     - pixels
     - action
-    - observation
+    - proprio
     keys_to_cache:
     - action
-    - observation
+    - proprio

@@ -1,0 +1,8 @@
+
+CondaError: Run 'conda init' before 'conda activate'
+
+Traceback (most recent call last):
+  File "/zfsauton2/home/yiqiw2/workspace/better_wm/dis-wm/train.py", line 5, in <module>
+    import hydra
+ModuleNotFoundError: No module named 'hydra'
+srun: error: gpu28: task 0: Exited with exit code 1

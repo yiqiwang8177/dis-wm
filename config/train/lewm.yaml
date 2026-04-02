@@ -19,12 +19,13 @@ trainer:
   accelerator: gpu
   precision: bf16
   gradient_clip_val: 1.0
+  default_root_dir: './'
 
 loader:
   batch_size: 128
   num_workers: ${num_workers}
   persistent_workers: True
-  prefetch_factor: 3
+  prefetch_factor: 1
   pin_memory: True
 
 optimizer:

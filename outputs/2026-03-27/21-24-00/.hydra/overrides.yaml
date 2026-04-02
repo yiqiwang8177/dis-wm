@@ -1,0 +1,3 @@
+- data=tworoom
+- trainer.default_root_dir=/zfsauton/scratch/yiqiw2/logs
+- wandb.enabled=False
