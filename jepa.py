@@ -89,8 +89,8 @@ class JEPA(nn.Module):
 
     def rollout(self, info, action_sequence, history_size: int = 3):
         """Rollout the model given an initial info dict and action sequence.
-        pixels: (B, S, T, C, H, W)
-        action_sequence: (B, S, T, action_dim)
+        pixels: (B, S, T, C, H, W). E.g., 1x300x1x3x224x224
+        action_sequence: (B, S, T, action_dim). E.g., 1x300x5x10
          - S is the number of action plan samples
          - T is the time horizon
         """
@@ -98,6 +98,7 @@ class JEPA(nn.Module):
         assert "pixels" in info, "pixels not in info_dict"
         H = info["pixels"].size(2)
         B, S, T = action_sequence.shape[:3]
+       
         act_0, act_future = torch.split(action_sequence, [H, T - H], dim=2)
         info["action"] = act_0
         n_steps = T - H
@@ -107,6 +108,14 @@ class JEPA(nn.Module):
         _init = self.encode(_init)
         emb = info["emb"] = _init["emb"].unsqueeze(1).expand(B, S, -1, -1)
         _init = {k: detach_clone(v) for k, v in _init.items()}
+
+        # if diswm, fix static embedding from first encoded frame
+        has_static, emb_static_flat = "emb_static" in _init, None
+        if has_static:
+            # _init["emb_static"]: (B, H, D_static) -> take first frame, expand over S
+            emb_static_init = _init["emb_static"][:, 0:1]  # (B, 1, D_static)
+            emb_static_init = emb_static_init.unsqueeze(1).expand(B, S, -1, -1)  # (B, S, 1, D_static)
+            emb_static_flat = rearrange(emb_static_init, "b s ... -> (b s) ...").clone()  # (BS, 1, D_static)
 
         # flatten batch and sample dimensions for rollout
         emb = rearrange(emb, "b s ... -> (b s) ...").clone()
@@ -119,7 +128,8 @@ class JEPA(nn.Module):
             act_emb = self.action_encoder(act)
             emb_trunc = emb[:, -HS:]  # (BS, HS, D)
             act_trunc = act_emb[:, -HS:]  # (BS, HS, A_emb)
-            pred_emb = self.predict(emb_trunc, act_trunc)[:, -1:]  # (BS, 1, D)
+            pred_emb = self.predict(emb_trunc, act_trunc, static_emb=emb_static_flat,
+            )[:, -1:]  # (BS, 1, D)
             emb = torch.cat([emb, pred_emb], dim=1)  # (BS, T+1, D)
 
             next_act = act_future[:, t : t + 1, :]  # (BS, 1, action_dim)
@@ -129,13 +139,14 @@ class JEPA(nn.Module):
         act_emb = self.action_encoder(act)  # (BS, T, A_emb)
         emb_trunc = emb[:, -HS:]  # (BS, HS, D)
         act_trunc = act_emb[:, -HS:]  # (BS, HS, A_emb)
-        pred_emb = self.predict(emb_trunc, act_trunc)[:, -1:]  # (BS, 1, D)
+        pred_emb = self.predict(emb_trunc, act_trunc, static_emb=emb_static_flat,)[:, -1:]  # (BS, 1, D)
         emb = torch.cat([emb, pred_emb], dim=1)
 
         # unflatten batch and sample dimensions
         pred_rollout = rearrange(emb, "(b s) ... -> b s ...", b=B, s=S)
         info["predicted_emb"] = pred_rollout
-
+        if has_static:
+            info["emb_static"] = rearrange(emb_static_flat, "(b s) ... -> b s ...", b=B, s=S)
         return info
 
     def criterion(self, info_dict: dict):

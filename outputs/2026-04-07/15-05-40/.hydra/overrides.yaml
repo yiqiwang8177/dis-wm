@@ -1,0 +1,7 @@
+- output_model_name=diswm
+- dino_features=True
+- diswm=True
+- data=tworoom
+- loader.batch_size=32
+- trainer.default_root_dir=/zfsauton/scratch/yiqiw2/logs
+- wandb.enabled=False

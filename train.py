@@ -54,6 +54,41 @@ def lejepa_forward(self, batch, stage, cfg, static_weights=None):
         static_emb_std = emb_static.std(dim=1).mean()
         output["static_emb_std"] = static_emb_std
         
+        # -------------------------------------------------------------- #
+        # Rollout loss                                                     #
+        #                                                                  #
+        # Starting from the context window, we autoregressively predict   #
+        # `rollout_steps` steps ahead, reusing each predicted dynamic     #
+        # embedding as the next input while keeping static_emb fixed.     #
+        #                                                                  #
+        # Diagram:                                                         #
+        #   dyn:    emb0 -> emb_1 ->emb_2 -> ... #
+        #   static: [fixed emb_static[:, 0]] broadcast across all steps   #
+        #   target: emb1, emb2, emb3, ...,              #
+        # -------------------------------------------------------------- #
+        fixed_static = emb_static[:, 0:1]  # (B, 1, D_static)
+        current_dyn = output["emb"][:, 0:1]  # (B, 1, D_static)
+        rollout_preds = []
+        max_rollout = output["emb"].shape[1]-1
+        rollout_act_emb  = output["act_emb"][:, :max_rollout]
+
+        for step in range(max_rollout):
+            act_step = rollout_act_emb[:, step:step+1]  # (B, 1, A)
+
+            pred_step = self.model.predict(
+                current_dyn,          # (B, 1, D)
+                act_step,             # (B, 1, A)
+                static_emb=fixed_static,  # (B, 1, D_static)
+            )  # -> (B, 1, D)
+
+            rollout_preds.append(pred_step)
+            current_dyn = pred_step  # feed prediction as next input
+        rollout_preds = torch.cat(rollout_preds, dim=1)      # (B, T-1, D)
+        rollout_targets = output["emb"][:, 1:]               # (B, T-1, D)
+        
+        output["rollout_loss"] = (rollout_preds - rollout_targets).pow(2).mean()
+        output["loss"] += output["rollout_loss"]   
+        
     losses_dict = {f"{stage}/{k}": v.detach() for k, v in output.items() if "loss" in k}
     if "static_emb_std" in output:
         losses_dict[f"{stage}/static_emb_std"] = output["static_emb_std"].detach()
