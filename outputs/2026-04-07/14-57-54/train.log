@@ -1,6 +1,0 @@
-[2026-04-07 14:57:54,209][root][INFO] - Cached 'action' from '/zfsauton/scratch/yiqiw2/stable_worldmodel/tworoom.h5'
-[2026-04-07 14:57:54,215][root][INFO] - Cached 'proprio' from '/zfsauton/scratch/yiqiw2/stable_worldmodel/tworoom.h5'
-[2026-04-07 14:57:54,486][timm.models._builder][INFO] - Loading pretrained weights from Hugging Face hub (timm/vit_small_patch16_dinov3.lvd1689m)
-[2026-04-07 14:57:54,702][httpx][INFO] - HTTP Request: HEAD https://huggingface.co/timm/vit_small_patch16_dinov3.lvd1689m/resolve/main/model.safetensors "HTTP/1.1 302 Found"
-[2026-04-07 14:57:55,411][httpx][INFO] - HTTP Request: GET https://huggingface.co/api/models/timm/vit_small_patch16_dinov3.lvd1689m/xet-read-token/3bf4720a82ec2066db88137180ff1f83a675cef0 "HTTP/1.1 200 OK"
-[2026-04-07 14:58:01,148][timm.models._hub][INFO] - [timm/vit_small_patch16_dinov3.lvd1689m] Safe alternative available for 'pytorch_model.bin' (as 'model.safetensors'). Loading weights using safetensors.
