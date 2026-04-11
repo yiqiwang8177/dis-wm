@@ -23,7 +23,8 @@ conda activate swm
 
 # diswm (ours):
 srun python train.py \
-    output_model_name=diswm \
+    output_model_name=diswm_staticnosigreg \
+    static_sigreg=False \
     dino_features=True \
     diswm=True \
     data=tworoom \

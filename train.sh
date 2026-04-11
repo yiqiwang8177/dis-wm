@@ -11,6 +11,7 @@ conda activate swm
 # our own diswm: 
 HYDRA_FULL_ERROR=1 python train.py \
     output_model_name=diswm \
+    static_sigreg=False \
     dino_features=True \
     diswm=True \
     data=tworoom \

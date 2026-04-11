@@ -77,8 +77,10 @@ class JEPA(nn.Module):
         """
         preds = self.predictor(emb, act_emb)
         if self.diswm:
-          
-            preds = torch.cat([preds, static_emb], dim=-1)
+            try:
+                preds = torch.cat([preds, static_emb], dim=-1)
+            except:
+                assert False, f"{preds.shape} {static_emb.shape}"
         preds = self.pred_proj(rearrange(preds, "b t d -> (b t) d"))
         preds = rearrange(preds, "(b t) d -> b t d", b=emb.size(0))
         return preds
@@ -116,7 +118,7 @@ class JEPA(nn.Module):
             emb_static_init = _init["emb_static"][:, 0:1]  # (B, 1, D_static)
             emb_static_init = emb_static_init.unsqueeze(1).expand(B, S, -1, -1)  # (B, S, 1, D_static)
             emb_static_flat = rearrange(emb_static_init, "b s ... -> (b s) ...").clone()  # (BS, 1, D_static)
-
+            emb_static_flat = repeat(emb_static_flat, 'b t d -> b (T t) d', T = history_size) # (BS, history_size, D_static)
         # flatten batch and sample dimensions for rollout
         emb = rearrange(emb, "b s ... -> (b s) ...").clone()
         act = rearrange(act_0, "b s ... -> (b s) ...")

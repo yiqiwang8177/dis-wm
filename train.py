@@ -16,12 +16,15 @@ from module import ARPredictor, Embedder, MLP, SIGReg, StateExtractor
 from utils import get_column_normalizer, get_img_preprocessor, ModelObjectCallBack
 import timm
 
+torch.hub.set_dir('/zfsauton/scratch/yiqiw2/.cache')
+
 def lejepa_forward(self, batch, stage, cfg, static_weights=None):
     """encode observations, predict next states, compute losses."""
 
     ctx_len = cfg.wm.history_size
     n_preds = cfg.wm.num_preds
     lambd = cfg.loss.sigreg.weight
+    static_sigreg = cfg.static_sigreg # if True, static state has sigreg
 
     # Replace NaN values with 0 (occurs at sequence boundaries)
     batch["action"] = torch.nan_to_num(batch["action"], 0.0)
@@ -44,8 +47,9 @@ def lejepa_forward(self, batch, stage, cfg, static_weights=None):
     output["loss"] = output["pred_loss"] + lambd * output["sigreg_loss"]  
     if "emb_static" in output:
         assert static_weights is not None, "static_weights must be provided for DisWM"
-        output["sigreg_loss_static"]= self.sigreg(emb_static.transpose(0, 1))
-        output["loss"] += lambd * output["sigreg_loss_static"]
+        if static_sigreg:
+            output["sigreg_loss_static"]= self.sigreg(emb_static.transpose(0, 1))
+            output["loss"] += lambd * output["sigreg_loss_static"]
         # static loss: pairwise loss 
         diff = emb_static.unsqueeze(2) - emb_static.unsqueeze(1) 
         pairwise_loss = diff.pow(2).mean(dim=-1) * static_weights.to(diff.device).unsqueeze(0)
@@ -66,25 +70,27 @@ def lejepa_forward(self, batch, stage, cfg, static_weights=None):
         #   static: [fixed emb_static[:, 0]] broadcast across all steps   #
         #   target: emb1, emb2, emb3, ...,              #
         # -------------------------------------------------------------- #
-        fixed_static = emb_static[:, 0:1]  # (B, 1, D_static)
+        
         current_dyn = output["emb"][:, 0:1]  # (B, 1, D_static)
         rollout_preds = []
         max_rollout = output["emb"].shape[1]-1
+        fixed_static = emb_static[:, 0:1].repeat(1, max_rollout, 1) # (B, 1, D_static)-> (B, max_rollout, D_static)
         rollout_act_emb  = output["act_emb"][:, :max_rollout]
 
         for step in range(max_rollout):
-            act_step = rollout_act_emb[:, step:step+1]  # (B, 1, A)
+            act_step = rollout_act_emb[:, :step+1]  # (B, step, A)
 
             pred_step = self.model.predict(
-                current_dyn,          # (B, 1, D)
-                act_step,             # (B, 1, A)
-                static_emb=fixed_static,  # (B, 1, D_static)
-            )  # -> (B, 1, D)
-
+                current_dyn,          # (B, step, D) 
+                act_step,             # (B, step, A)
+                static_emb=fixed_static[:,:step+1 ],  # (B, step, D_static)
+            )[:,-1:]  # (B, 1, D)
+            
             rollout_preds.append(pred_step)
-            current_dyn = pred_step  # feed prediction as next input
+            current_dyn = torch.cat([current_dyn, pred_step], dim=1)
+
         rollout_preds = torch.cat(rollout_preds, dim=1)      # (B, T-1, D)
-        rollout_targets = output["emb"][:, 1:]               # (B, T-1, D)
+        rollout_targets = output["emb"][:, n_preds:]               # (B, T-1, D)
         
         output["rollout_loss"] = (rollout_preds - rollout_targets).pow(2).mean()
         output["loss"] += output["rollout_loss"]   
