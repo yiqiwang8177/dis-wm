@@ -8,7 +8,7 @@ Yiqi Wang, Nate Ludlow, Tony Wu, Teddy Lin
 static state $s_t$ is extracted to encode information less subject to changes due to actions, and participated
 in dynamics learning with the dynamic state $e_t$. During inference, the WM-based planning involves
 predicting dynamic states $e_t$ multi-step away given a goal state. By decoupling static vs. dynamic
-states, the planning could be less vulnerable to compounding error and enjoy faster computations. This code base is based on the original [LeWorldModel](https://github.com/lucas-maes/le-wm) codebase.
+states, the planning could be less vulnerable to compounding error and enjoy faster computations.
 
 <br>
 
@@ -16,7 +16,7 @@ states, the planning could be less vulnerable to compounding error and enjoy fas
   <img src="assets/lewm.gif" width="80%">
 </p>
 
-If you find this code useful, please reference it in your paper:
+Our code is based on the LeWorldModel project:
 ```
 @article{maes_lelidec2026lewm,
   title={LeWorldModel: Stable End-to-End Joint-Embedding Predictive Architecture from Pixels},
