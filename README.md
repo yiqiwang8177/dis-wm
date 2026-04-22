@@ -4,7 +4,7 @@
 
 Yiqi Wang, Nate Ludlow, Tony Wu, Teddy Lin
 
-**Abstract:** We learn a World Model (WM) with a state encoder, extractor, and dynamics model. A
+**Abstract:** In this course project, we learn a World Model (WM) with a state encoder, extractor, and dynamics model. A
 static state $s_t$ is extracted to encode information less subject to changes due to actions, and participated
 in dynamics learning with the dynamic state $e_t$. During inference, the WM-based planning involves
 predicting dynamic states $e_t$ multi-step away given a goal state. By decoupling static vs. dynamic
@@ -13,7 +13,7 @@ states, the planning could be less vulnerable to compounding error and enjoy fas
 <br>
 
 <p align="center">
-  <img src="assets/lewm.gif" width="80%">
+  <img src="assets/method_scratch.png" width="80%">
 </p>
 
 Our code is based on the LeWorldModel project:
@@ -132,6 +132,3 @@ This function accepts:
 - `cache_dir` — optional override for the checkpoint root (defaults to `$STABLEWM_HOME`)
 
 The returned module is in `eval` mode with its PyTorch weights accessible via `.state_dict()`.
-
-## Contact & Contributions
-Feel free to open [issues](https://github.com/lucas-maes/le-wm/issues)! For questions or collaborations, please contact `lucas.maes@mila.quebec`
