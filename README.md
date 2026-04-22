@@ -1,14 +1,14 @@
 
-# LeWorldModel
-### Stable End-to-End Joint-Embedding Predictive Architecture from Pixels
+# Dis-WorldModel
+### Efficient World Models with Disentangled Latent States
 
-[Lucas Maes*](https://x.com/lucasmaes_), [Quentin Le Lidec*](https://quentinll.github.io/), [Damien Scieur](https://scholar.google.com/citations?user=hNscQzgAAAAJ&hl=fr), [Yann LeCun](https://yann.lecun.com/) and [Randall Balestriero](https://randallbalestriero.github.io/)
+Yiqi Wang, Nate Ludlow, Tony Wu, Teddy Lin
 
-**Abstract:** Joint Embedding Predictive Architectures (JEPAs) offer a compelling framework for learning world models in compact latent spaces, yet existing methods remain fragile, relying on complex multi-term losses, exponential moving averages, pretrained encoders, or auxiliary supervision to avoid representation collapse. In this work, we introduce LeWorldModel (LeWM), the first JEPA that trains stably end-to-end from raw pixels using only two loss terms: a next-embedding prediction loss and a regularizer enforcing Gaussian-distributed latent embeddings. This reduces tunable loss hyperparameters from six to one compared to the only existing end-to-end alternative. With ~15M parameters trainable on a single GPU in a few hours, LeWM plans up to 48× faster than foundation-model-based world models while remaining competitive across diverse 2D and 3D control tasks. Beyond control, we show that LeWM's latent space encodes meaningful physical structure through probing of physical quantities. Surprise evaluation confirms that the model reliably detects physically implausible events.
-
-<p align="center">
-   <b>[ <a href="https://arxiv.org/pdf/2603.19312v1">Paper</a> | <a href="https://drive.google.com/drive/folders/1r31os0d4-rR0mdHc7OlY_e5nh3XT4r4e?usp=sharing">Data</a> | <a href="https://le-wm.github.io/">Website</a> ]</b>
-</p>
+**Abstract:** We learn a World Model (WM) with a state encoder, extractor, and dynamics model. A
+static state $s_t$ is extracted to encode information less subject to changes due to actions, and participated
+in dynamics learning with the dynamic state $e_t$. During inference, the WM-based planning involves
+predicting dynamic states $e_t$ multi-step away given a goal state. By decoupling static vs. dynamic
+states, the planning could be less vulnerable to compounding error and enjoy faster computations. This code base is based on the original [LeWorldModel](https://github.com/lucas-maes/le-wm) codebase.
 
 <br>
 
